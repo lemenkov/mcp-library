@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "library"
+version = "0.1.0"
+description = "MCP server for personal book collection management"
+authors = [{name = "Peter Lemenkov", email = "lemenkov@gmail.com"}]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastmcp>=3.0.0",
+    "aiosqlite>=0.19.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+library = "mcp_library.server:main"
+library-init-db = "mcp_library.database:init_database_cli"
+library-index = "mcp_library.indexer:index_cli"
+
+[project.urls]
+Homepage = "https://github.com/lemenkov/mcp-library"
+Repository = "https://github.com/lemenkov/mcp-library"
+Issues = "https://github.com/lemenkov/mcp-library/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
