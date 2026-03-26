@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 
+# METADATA VERSION - Increment when improving extraction logic
+METADATA_VERSION = "1.0.0"
 
 class MetadataExtractor:
     """Extract metadata from various book file formats."""
@@ -313,6 +315,7 @@ class MetadataExtractor:
         # Basic file information
         stat = os.stat(filepath)
         metadata = {
+            'metadata_version': METADATA_VERSION,
             'filename': filename,
             'uri': f'file://{os.path.abspath(filepath)}',
             'file_type': file_type,

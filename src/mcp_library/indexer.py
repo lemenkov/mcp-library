@@ -5,7 +5,7 @@ import asyncio
 from pathlib import Path
 from typing import Optional
 from .database import LibraryDatabase
-from .metadata_extractors import MetadataExtractor
+from .metadata_extractors import MetadataExtractor, METADATA_VERSION
 
 
 class LibraryIndexer:
@@ -33,6 +33,7 @@ class LibraryIndexer:
             return
 
         print(f"Indexing directory: {self.books_dir}")
+        print(f"Metadata extraction version: {METADATA_VERSION}")
 
         # Supported file types
         extensions = {'.pdf', '.djvu', '.epub', '.fb2', '.zip', '.doc', '.docx'}
@@ -60,7 +61,7 @@ class LibraryIndexer:
                 existing_books = await self.db.search_books(
                     query=None,
                     file_type=None,
-                    limit=1000
+                    limit=10000  # Increase limit for large collections
                 )
 
                 existing_by_hash = [
@@ -68,24 +69,26 @@ class LibraryIndexer:
                     if b.get('file_hash') == metadata.get('file_hash')
                 ]
 
-                if existing_by_hash and not force_reindex:
-                    # File already indexed with same hash
-                    files_skipped += 1
+                if existing_by_hash:
+                    book_id = existing_by_hash[0]['id']
+                    existing_version = existing_by_hash[0].get('metadata_version', '0.0.0')
+
+                    # Re-extract if version outdated or force flag
+                    if existing_version < METADATA_VERSION or force_reindex:
+                        await self.db.update_book(book_id, metadata)
+                        files_updated += 1
+                    else:
+                        files_skipped += 1
+
                     if files_found % 10 == 0:
                         print(f"Processed {files_found} files... "
                               f"(indexed: {files_indexed}, updated: {files_updated}, "
                               f"skipped: {files_skipped})")
                     continue
 
-                if existing_by_hash:
-                    # Update existing entry
-                    book_id = existing_by_hash[0]['id']
-                    await self.db.update_book(book_id, metadata)
-                    files_updated += 1
-                else:
-                    # Add new entry
-                    await self.db.add_book(metadata)
-                    files_indexed += 1
+                # Add new entry
+                await self.db.add_book(metadata)
+                files_indexed += 1
 
                 if files_found % 10 == 0:
                     print(f"Processed {files_found} files... "

@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS books (
     -- Content completeness
     is_complete BOOLEAN DEFAULT 1,  -- False for partial scans, excerpts
     missing_pages TEXT,  -- e.g., "1-3,15,22-25" for damaged/missing pages
-    content_type TEXT,  -- book, article, journal-excerpt, chapter, partial-scan
+    content_type TEXT CHECK(content_type IN ('book', 'article', 'journal', 'magazine', 'manual', 'other')),  -- book, article, journal-excerpt, chapter, partial-scan
 
     -- Source tracking
     source_url TEXT,  -- Where it was downloaded from
@@ -38,7 +38,10 @@ CREATE TABLE IF NOT EXISTS books (
 
     -- User annotations
     notes TEXT,
-    quality_rating INTEGER  -- 1-5 stars for scan/content quality
+    quality_rating INTEGER CHECK(quality_rating >= 1 AND quality_rating <= 5), -- 1-5 stars for scan/content quality
+
+    -- Metadata versioning (NEW!)
+    metadata_version TEXT DEFAULT '1.0.0'
 );
 
 -- Wikipedia citation templates (cite_book fields)
@@ -224,3 +227,4 @@ CREATE INDEX IF NOT EXISTS idx_external_book_links_book ON external_book_links(b
 CREATE INDEX IF NOT EXISTS idx_external_book_links_library ON external_book_links(library_id);
 CREATE INDEX IF NOT EXISTS idx_ocr_processing_book ON ocr_processing(book_id);
 CREATE INDEX IF NOT EXISTS idx_ocr_processing_status ON ocr_processing(status);
+CREATE INDEX IF NOT EXISTS idx_books_metadata_version ON books(metadata_version);
