@@ -3,6 +3,7 @@
 import os
 import sqlite3
 import aiosqlite
+import sys
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -69,7 +70,8 @@ class LibraryDatabase:
         language: Optional[str] = None,
         author: Optional[str] = None,
         file_type: Optional[str] = None,
-        limit: int = 20
+        limit: int = 20,
+        offset: int = 0
     ) -> List[Dict[str, Any]]:
         """Search books with filters.
 
@@ -107,6 +109,7 @@ class LibraryDatabase:
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         params.append(limit)
+        params.append(offset)
 
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -115,7 +118,7 @@ class LibraryDatabase:
                 SELECT * FROM books
                 WHERE {where_clause}
                 ORDER BY title
-                LIMIT ?
+                LIMIT ? OFFSET ?
                 """,
                 params
             )
@@ -147,15 +150,22 @@ class LibraryDatabase:
             book_id: Book ID
             updates: Dictionary of fields to update
         """
-        set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
-        values = list(updates.values()) + [book_id]
-
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute(
-                f"UPDATE books SET {set_clause} WHERE id = ?",
-                values
-            )
-            await db.commit()
+        print(f"DEBUG: opening db at {self.db_path}", file=sys.stderr)
+        print(f"DEBUG: updates={updates}", file=sys.stderr)
+        try:
+            set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
+            values = list(updates.values()) + [book_id]
+            async with aiosqlite.connect(self.db_path) as db:
+                print(f"DEBUG: connected, executing update", file=sys.stderr)
+                await db.execute(
+                    f"UPDATE books SET {set_clause} WHERE id = ?",
+                    values
+                )
+                await db.commit()
+                print(f"DEBUG: committed OK", file=sys.stderr)
+        except Exception as e:
+            print(f"DEBUG: exception {type(e).__name__}: {e}", file=sys.stderr)
+            raise
 
     async def get_books_by_language(self, language: str) -> List[Dict[str, Any]]:
         """Get all books in a specific language.
@@ -175,6 +185,45 @@ class LibraryDatabase:
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
+    async def get_books_with_isbn(self) -> List[Dict[str, Any]]:
+        """Get all books that have an ISBN."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT id, isbn, title, author, filename FROM books WHERE isbn IS NOT NULL"
+            )
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    async def get_books_for_enrichment(
+        self,
+        file_type: str,
+        limit: int,
+        offset: int,
+    ) -> List[Dict[str, Any]]:
+        """Get books with title+author but missing enrichment metadata."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """SELECT * FROM books
+                   WHERE file_type = ?
+                   AND title IS NOT NULL
+                   AND author IS NOT NULL
+                   AND title NOT LIKE '%.qxd%'
+                   AND title NOT LIKE '%.doc%'
+                   AND title NOT LIKE '%.qxp%'
+                   AND title NOT LIKE 'Microsoft Word%'
+                   AND NOT (
+                       publisher IS NOT NULL
+                       AND year IS NOT NULL
+                       AND isbn IS NOT NULL
+                   )
+                   ORDER BY title
+                   LIMIT ? OFFSET ?""",
+                (file_type, limit, offset)
+            )
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
 
 def init_database_cli():
     """CLI command to initialize database."""
