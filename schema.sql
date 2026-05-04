@@ -211,6 +211,22 @@ CREATE TABLE IF NOT EXISTS ocr_systems (
     notes TEXT
 );
 
+-- Entry index for reference works (encyclopedias, dictionaries, ampelographies)
+CREATE TABLE IF NOT EXISTS entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    heading TEXT NOT NULL,
+    heading_normalized TEXT NOT NULL,
+    aliases TEXT,  -- JSON array of alternate names/cross-references
+    page_start INTEGER,
+    page_end INTEGER,
+    word_count INTEGER,
+    content TEXT,
+    quality TEXT DEFAULT 'unknown' CHECK(quality IN ('clean_digital', 'ocr_high', 'ocr_medium', 'ocr_low', 'unknown')),
+    completeness TEXT DEFAULT 'unknown' CHECK(completeness IN ('complete', 'partial', 'unknown')),
+    UNIQUE(book_id, heading_normalized)
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_books_filename ON books(filename);
 CREATE INDEX IF NOT EXISTS idx_books_uri ON books(uri);
@@ -228,3 +244,24 @@ CREATE INDEX IF NOT EXISTS idx_external_book_links_library ON external_book_link
 CREATE INDEX IF NOT EXISTS idx_ocr_processing_book ON ocr_processing(book_id);
 CREATE INDEX IF NOT EXISTS idx_ocr_processing_status ON ocr_processing(status);
 CREATE INDEX IF NOT EXISTS idx_books_metadata_version ON books(metadata_version);
+CREATE INDEX IF NOT EXISTS idx_entries_book_id ON entries(book_id);
+CREATE INDEX IF NOT EXISTS idx_entries_heading_normalized ON entries(heading_normalized);
+
+-- FTS5 full-text search index
+CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
+    heading,
+    content,
+    content='entries',
+    content_rowid='id'
+);
+
+-- Citation log for UC-8
+CREATE TABLE IF NOT EXISTS citation_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES books(id),
+    entry_id INTEGER REFERENCES entries(id),
+    project_id TEXT NOT NULL,  -- e.g. Wikipedia article slug
+    page_range TEXT,
+    note TEXT,
+    logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
