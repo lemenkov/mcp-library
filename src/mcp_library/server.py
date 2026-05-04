@@ -27,8 +27,11 @@ def get_db() -> LibraryDatabase:
     return db
 
 
-@mcp.tool()
-async def search_library(
+@mcp.tool(
+    tags={"read"},
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+)
+async def search(
     query: Optional[str] = None,
     language: Optional[str] = None,
     author: Optional[str] = None,
@@ -70,8 +73,11 @@ async def search_library(
     return response
 
 
-@mcp.tool()
-async def get_book_info(book_id: int) -> str:
+@mcp.tool(
+    tags={"read"},
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+)
+async def get_book(book_id: int) -> str:
     """Get detailed information about a specific book.
 
     Args:
@@ -122,8 +128,11 @@ async def get_book_info(book_id: int) -> str:
     return response
 
 
-@mcp.tool()
-async def list_by_language(language: str) -> str:
+@mcp.tool(
+    tags={"read"},
+    annotations={"readOnlyHint": True, "openWorldHint": False},
+)
+async def list_books(language: str) -> str:
     """List all books in a specific language.
 
     Args:
@@ -151,7 +160,10 @@ async def list_by_language(language: str) -> str:
     return response
 
 
-@mcp.tool()
+@mcp.tool(
+    tags={"write"},
+    annotations={"readOnlyHint": False, "destructiveHint": False, "openWorldHint": True},
+)
 async def enrich_by_isbn(dry_run: bool = False) -> str:
     """Enrich book metadata by querying Open Library for books with ISBNs.
 
@@ -209,7 +221,10 @@ async def enrich_by_isbn(dry_run: bool = False) -> str:
     return summary + "\n".join(results)
 
 
-@mcp.tool()
+@mcp.tool(
+    tags={"write"},
+    annotations={"readOnlyHint": False, "destructiveHint": False, "openWorldHint": True},
+)
 async def enrich_by_title_author(
     file_type: str = "fb2",
     limit: int = 50,
@@ -312,7 +327,10 @@ async def enrich_by_title_author(
     )
     return summary + "\n".join(results)
 
-@mcp.tool()
+@mcp.tool(
+    tags={"write"},
+    annotations={"readOnlyHint": False, "destructiveHint": False, "openWorldHint": True},
+)
 async def enrich_by_gutenberg(
     file_type: str = "pdf",
     limit: int = 50,
@@ -401,8 +419,11 @@ async def enrich_by_gutenberg(
     )
     return summary + "\n".join(results) if results else summary
 
-@mcp.tool()
-async def test_db_write() -> str:
+@mcp.tool(
+    tags={"read"},
+    annotations={"readOnlyHint": False, "destructiveHint": False, "openWorldHint": False},
+)
+async def check_health() -> str:
     """Test if DB is writable."""
     import aiosqlite
     import os
